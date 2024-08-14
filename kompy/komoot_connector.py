@@ -1,6 +1,8 @@
+import gzip
 import json
 import logging
 import re
+from io import BytesIO
 from typing import (
     List,
     Optional,
@@ -256,6 +258,52 @@ class KomootConnector:
             return gpxpy.parse(response.content)
         if object_type == TourObjectTypes.FIT:
             return FitFile.from_bytes(response.content)
+
+    @staticmethod
+    def zip_payload(payload: str) -> bytes:
+        btsio = BytesIO()
+        g = gzip.GzipFile(fileobj=btsio, mode='w')
+        g.write(bytes(payload, 'utf8'))
+        g.close()
+        return btsio.getvalue()
+
+    def update_tour_title(
+        self,
+        tour_identifier: str,
+        new_title: str
+    ):
+        """
+        Get a tour by its ID.
+        :param tour_identifier: The ID of the tour
+        :param new_title: The new title of the tour
+        """
+
+        try:
+            print(KomootUrl.UPDATE_TOUR_URL.format(tour_identifier=tour_identifier))
+            response = requests.patch(
+                url=KomootUrl.UPDATE_TOUR_URL.format(tour_identifier=tour_identifier),
+                auth=(self.authentication.get_email_address(), self.authentication.get_password()),
+                headers={"content-encoding": "gzip", "content-type": "application/hal+json"},
+                data=self.zip_payload(json.dumps({"name": new_title}))
+            )
+            print(response.status_code)
+            print(response.content)
+            if response.status_code == 403:
+                raise ConnectionError(
+                    'Connection to Komoot API failed. Please check your credentials.'
+                )
+            if response.status_code == 404:
+                raise ValueError(f'Invalid tour identifier provided: {tour_identifier}. '
+                                 f'Please provide a valid tour identifier.')
+            if response.status_code == 500:
+                raise ConnectionError(
+                    'Internal Server Error. if you requested a FIT file, '
+                    'please try again later or try fetching another format.'
+                )
+        except requests.exceptions.ConnectionError:
+            raise ConnectionError(
+                'Connection to Komoot API failed. Please check your internet connection.'
+            )
 
     def upload_tour(
         self,
