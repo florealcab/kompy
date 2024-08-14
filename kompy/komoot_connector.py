@@ -301,6 +301,8 @@ class KomootConnector:
             raise ConnectionError(
                 'Connection to Komoot API failed. Please check your internet connection.'
             )
+        resp = json.loads(response.content.decode('utf-8'))
+        return Tour(resp)
 
     def upload_tour(
         self,
