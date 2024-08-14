@@ -279,15 +279,12 @@ class KomootConnector:
         """
 
         try:
-            print(KomootUrl.UPDATE_TOUR_URL.format(tour_identifier=tour_identifier))
             response = requests.patch(
                 url=KomootUrl.UPDATE_TOUR_URL.format(tour_identifier=tour_identifier),
                 auth=(self.authentication.get_email_address(), self.authentication.get_password()),
                 headers={"content-encoding": "gzip", "content-type": "application/hal+json"},
                 data=self.zip_payload(json.dumps({"name": new_title}))
             )
-            print(response.status_code)
-            print(response.content)
             if response.status_code == 403:
                 raise ConnectionError(
                     'Connection to Komoot API failed. Please check your credentials.'
